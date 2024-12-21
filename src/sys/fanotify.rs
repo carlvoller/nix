@@ -271,7 +271,8 @@ impl FanotifyFidRecord {
     /// file_handle struct.For more information:
     /// <https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html>
     pub fn handle(&self) -> &[u8] {
-        &self.handle_bytes
+        println!("{:?}", self);
+        self.handle_bytes.as_ref()
     }
 }
 
@@ -635,8 +636,7 @@ impl Fanotify {
                             std::ptr::copy_nonoverlapping(
                                 buffer.as_ptr().add(offset + struct_size),
                                 file_handle.as_mut_ptr().cast(),
-                                (BUFSIZ - offset - struct_size)
-                                    .min(file_handle_total_bytes),
+                                file_handle_total_bytes,
                             );
                             file_handle.assume_init()
                         };
