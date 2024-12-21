@@ -259,8 +259,8 @@ impl FanotifyFidRecord {
     /// represented as a 0-length u8 array, but it actually points to variable-length
     /// file_handle struct.For more information:
     /// <https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html>
-    pub fn handle(&self) -> [u8; 0] {
-        self.0.handle
+    pub fn handle(&self) -> *const u8 {
+        self.0.handle.as_ptr()
     }
 }
 
