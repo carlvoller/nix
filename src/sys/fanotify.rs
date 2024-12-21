@@ -613,8 +613,8 @@ impl Fanotify {
                                 &buffer,
                                 current_event_offset,
                             );
-                            
-                        println!("{:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>());
+
+                        println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
                         Some(FanotifyInfoRecord::Fid(FanotifyFidRecord(record)))
                     }
                     #[cfg(target_env = "gnu")]
