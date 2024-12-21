@@ -643,7 +643,7 @@ impl Fanotify {
                         // };
 
                         let record_ptr: *const libc::fanotify_event_info_fid = unsafe {
-                            buffer.as_ptr().add(offset)
+                            buffer.as_ptr().add(current_event_offset)
                                 as *const libc::fanotify_event_info_fid
                         };
 
