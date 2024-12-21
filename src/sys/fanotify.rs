@@ -254,7 +254,7 @@ pub struct LibcFanotifyFidRecord(libc::fanotify_event_info_fid);
 #[allow(missing_copy_implementations)]
 pub struct FanotifyFidRecord {
     record: LibcFanotifyFidRecord,
-    handle_bytes: Vec<u8>,
+    handle_bytes: *const u8,
 }
 
 impl FanotifyFidRecord {
@@ -270,9 +270,9 @@ impl FanotifyFidRecord {
     /// represented as a 0-length u8 array, but it actually points to variable-length
     /// file_handle struct.For more information:
     /// <https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html>
-    pub fn handle(&self) -> &[u8] {
+    pub fn handle(&self) -> *const u8 {
         println!("{:?}", self);
-        self.handle_bytes.as_ref()
+        self.handle_bytes
     }
 }
 
@@ -626,10 +626,10 @@ impl Fanotify {
                                 current_event_offset,
                             );
 
-                        let struct_size =
-                            size_of::<libc::fanotify_event_info_fid>();
-                        let file_handle_total_bytes =
-                            header.len as usize - struct_size;
+                        // let struct_size =
+                        //     size_of::<libc::fanotify_event_info_fid>();
+                        // let file_handle_total_bytes =
+                        //     header.len as usize - struct_size;
                         // let file_handle = unsafe {
                         //     let mut file_handle =
                         //         MaybeUninit::<Vec<u8>>::uninit();
@@ -642,12 +642,17 @@ impl Fanotify {
                         //     file_handle.assume_init()
                         // };
 
-                        let file_handle = &buffer[offset + struct_size..offset + struct_size+file_handle_total_bytes];
+                        let record_ptr: *const libc::fanotify_event_info_fid = unsafe {
+                            buffer.as_ptr().add(offset)
+                                as *const libc::fanotify_event_info_fid
+                        };
+
+                        let file_handle_ptr = unsafe { record_ptr.add(1) as *const u8 };
 
                         // println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
                         Some(FanotifyInfoRecord::Fid(FanotifyFidRecord {
                             record: LibcFanotifyFidRecord(record),
-                            handle_bytes: file_handle.to_owned(),
+                            handle_bytes: file_handle_ptr,
                         }))
                     }
                     #[cfg(target_env = "gnu")]
