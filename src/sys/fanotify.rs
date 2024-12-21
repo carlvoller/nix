@@ -633,10 +633,11 @@ impl Fanotify {
                         let file_handle = unsafe {
                             let mut file_handle =
                                 MaybeUninit::<Vec<u8>>::uninit();
+                            println!("{:?} {:?}", file_handle_total_bytes, (BUFSIZ - offset).min(file_handle_total_bytes));
                             std::ptr::copy_nonoverlapping(
                                 buffer.as_ptr().add(offset + struct_size),
                                 file_handle.as_mut_ptr().cast(),
-                                file_handle_total_bytes,
+                                (BUFSIZ - offset).min(file_handle_total_bytes),
                             );
                             file_handle.assume_init()
                         };
