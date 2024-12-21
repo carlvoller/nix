@@ -630,22 +630,24 @@ impl Fanotify {
                             size_of::<libc::fanotify_event_info_fid>();
                         let file_handle_total_bytes =
                             header.len as usize - struct_size;
-                        let file_handle = unsafe {
-                            let mut file_handle =
-                                MaybeUninit::<Vec<u8>>::uninit();
-                            println!("{:?} {:?}", file_handle_total_bytes, (BUFSIZ - offset).min(file_handle_total_bytes));
-                            std::ptr::copy_nonoverlapping(
-                                buffer.as_ptr().add(offset + struct_size),
-                                file_handle.as_mut_ptr().cast(),
-                                (BUFSIZ - offset).min(file_handle_total_bytes),
-                            );
-                            file_handle.assume_init()
-                        };
+                        // let file_handle = unsafe {
+                        //     let mut file_handle =
+                        //         MaybeUninit::<Vec<u8>>::uninit();
+                        //     println!("{:?} {:?}", file_handle_total_bytes, (BUFSIZ - offset).min(file_handle_total_bytes));
+                        //     std::ptr::copy_nonoverlapping(
+                        //         buffer.as_ptr().add(offset + struct_size),
+                        //         file_handle.as_mut_ptr().cast(),
+                        //         (BUFSIZ - offset).min(file_handle_total_bytes),
+                        //     );
+                        //     file_handle.assume_init()
+                        // };
+
+                        let file_handle = &buffer[offset + struct_size..offset + struct_size+file_handle_total_bytes];
 
                         // println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
                         Some(FanotifyInfoRecord::Fid(FanotifyFidRecord {
                             record: LibcFanotifyFidRecord(record),
-                            handle_bytes: file_handle,
+                            handle_bytes: file_handle.to_owned(),
                         }))
                     }
                     #[cfg(target_env = "gnu")]
