@@ -240,11 +240,22 @@ pub const FANOTIFY_METADATA_VERSION: u8 = libc::FANOTIFY_METADATA_VERSION;
 
 /// Abstract over [`libc::fanotify_event_info_fid`], which represents an
 /// information record received via [`Fanotify::read_events_with_info_records`].
-// Is not Clone due to fd field, to avoid use-after-close scenarios.
 #[derive(Debug, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 #[allow(missing_copy_implementations)]
-pub struct FanotifyFidRecord(libc::fanotify_event_info_fid);
+pub struct LibcFanotifyFidRecord(libc::fanotify_event_info_fid);
+
+/// Extends LibcFanotifyFidRecord to include file_handle bytes.
+/// This allows Rust to move the record around in memory and not lose the file_handle
+/// as the libc::fanotify_event_info_fid does not include any of the file_handle bytes.
+// Is not Clone due to fd field, to avoid use-after-close scenarios.
+#[derive(Debug, Eq, Hash, PartialEq)]
+#[repr(C)]
+#[allow(missing_copy_implementations)]
+pub struct FanotifyFidRecord {
+    record: LibcFanotifyFidRecord,
+    handle_bytes: Vec<u8>,
+}
 
 impl FanotifyFidRecord {
     /// The filesystem id where this event occurred. The value this method returns
@@ -252,15 +263,15 @@ impl FanotifyFidRecord {
     /// for more information:
     /// <https://man7.org/linux/man-pages/man2/statfs.2.html#VERSIONS>
     pub fn filesystem_id(&self) -> libc::__kernel_fsid_t {
-        self.0.fsid
+        self.record.0.fsid
     }
 
     /// The file handle for the filesystem object where the event occurred. The handle is
     /// represented as a 0-length u8 array, but it actually points to variable-length
     /// file_handle struct.For more information:
     /// <https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html>
-    pub fn handle(&self) -> *const u8 {
-        self.0.handle.as_ptr()
+    pub fn handle(&self) -> &[u8] {
+        &self.handle_bytes
     }
 }
 
@@ -614,8 +625,27 @@ impl Fanotify {
                                 current_event_offset,
                             );
 
-                        println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
-                        Some(FanotifyInfoRecord::Fid(FanotifyFidRecord(record)))
+                        let struct_size =
+                            size_of::<libc::fanotify_event_info_fid>();
+                        let file_handle_total_bytes =
+                            header.len as usize - struct_size;
+                        let file_handle = unsafe {
+                            let mut file_handle =
+                                MaybeUninit::<Vec<u8>>::uninit();
+                            std::ptr::copy_nonoverlapping(
+                                buffer.as_ptr().add(offset + struct_size),
+                                file_handle.as_mut_ptr().cast(),
+                                (BUFSIZ - offset - struct_size)
+                                    .min(file_handle_total_bytes),
+                            );
+                            file_handle.assume_init()
+                        };
+
+                        // println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
+                        Some(FanotifyInfoRecord::Fid(FanotifyFidRecord {
+                            record: LibcFanotifyFidRecord(record),
+                            handle_bytes: file_handle,
+                        }))
                     }
                     #[cfg(target_env = "gnu")]
                     libc::FAN_EVENT_INFO_TYPE_ERROR => {
