@@ -271,7 +271,6 @@ impl FanotifyFidRecord {
     /// file_handle struct.For more information:
     /// <https://man7.org/linux/man-pages/man2/open_by_handle_at.2.html>
     pub fn handle(&self) -> *const u8 {
-        println!("{:?}", self);
         self.handle_bytes
     }
 }
@@ -626,22 +625,6 @@ impl Fanotify {
                                 current_event_offset,
                             );
 
-                        // let struct_size =
-                        //     size_of::<libc::fanotify_event_info_fid>();
-                        // let file_handle_total_bytes =
-                        //     header.len as usize - struct_size;
-                        // let file_handle = unsafe {
-                        //     let mut file_handle =
-                        //         MaybeUninit::<Vec<u8>>::uninit();
-                        //     println!("{:?} {:?}", file_handle_total_bytes, (BUFSIZ - offset).min(file_handle_total_bytes));
-                        //     std::ptr::copy_nonoverlapping(
-                        //         buffer.as_ptr().add(offset + struct_size),
-                        //         file_handle.as_mut_ptr().cast(),
-                        //         (BUFSIZ - offset).min(file_handle_total_bytes),
-                        //     );
-                        //     file_handle.assume_init()
-                        // };
-
                         let record_ptr: *const libc::fanotify_event_info_fid = unsafe {
                             buffer.as_ptr().add(current_event_offset)
                                 as *const libc::fanotify_event_info_fid
@@ -649,7 +632,6 @@ impl Fanotify {
 
                         let file_handle_ptr = unsafe { record_ptr.add(1) as *const u8 };
 
-                        // println!("{:?} {:?} {:?}", header.len, size_of::<libc::fanotify_event_info_fid>(), record.handle.as_ptr());
                         Some(FanotifyInfoRecord::Fid(FanotifyFidRecord {
                             record: LibcFanotifyFidRecord(record),
                             handle_bytes: file_handle_ptr,
