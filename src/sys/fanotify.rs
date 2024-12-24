@@ -273,6 +273,13 @@ impl FanotifyFidRecord {
     pub fn handle(&self) -> *const u8 {
         self.handle_bytes
     }
+
+    /// The specific info_type for this Fid Record. Fanotify can return an Fid Record
+    /// with many different possible info_types. The info_type is not always necessary
+    /// but can be useful for connecting similar events together (like a FAN_RENAME) 
+    pub fn info_type(&self) -> u8 {
+        self.record.0.hdr.info_type
+    }
 }
 
 /// Abstract over [`libc::fanotify_event_info_error`], which represents an
